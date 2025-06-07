@@ -29,21 +29,22 @@ jobs:
 
     - name: Install Docker
       run: |
-        curl -fsSL https://get.docker.com | sudo sh
-        sudo systemctl start docker
-        echo "Docker version:"
-        sudo docker --version
+        sudo apt-get update
+        sudo apt-get install -y docker.io
+        sudo usermod -aG docker $USER
+        newgrp docker
 
     - name: Install Molecule and dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install "molecule==3.6.0" "molecule-docker==1.1.0" ansible
+        pip install --user molecule molecule-docker ansible
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-    - name: Verify Docker
+    - name: Verify installations
       run: |
-        sudo docker run --rm hello-world
+        docker --version
+        molecule --version
+        ansible --version
 
     - name: Run molecule test
-      run: |
-        cd molecule/default
-        molecule test --all
+      run: molecule test -s default
