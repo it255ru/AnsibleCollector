@@ -15,6 +15,6 @@ platforms:
 provisioner:
   name: ansible
   playbooks:
-    converge: collector.yml
+    converge: ../../collector.yml
 verifier:
   name: ansible
