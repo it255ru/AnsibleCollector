@@ -46,4 +46,4 @@ jobs:
     - name: Run molecule test
       run: |
         cd molecule/default
-        sudo molecule test --all
+        molecule test --all
