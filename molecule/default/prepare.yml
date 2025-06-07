@@ -4,6 +4,13 @@
   become: yes
   gather_facts: yes
   tasks:
+    - name: Wait for systemd to be active
+      shell: |
+        while ! (systemctl is-system-running | grep -q 'running'); do
+          sleep 10
+        done
+      changed_when: false
+
     - name: Install Python 3
       apt:
         name: python3
