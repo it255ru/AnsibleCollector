@@ -1,20 +1,27 @@
 ---
 dependency:
   name: galaxy
+
 driver:
   name: docker
+
 platforms:
   - name: debian
     image: debian:bullseye
     privileged: true
     pre_build_image: true
+    ansible_python_interpreter: /usr/bin/python3
   - name: rocky
     image: rockylinux/rockylinux:8
     privileged: true
     pre_build_image: true
+    ansible_python_interpreter: /usr/bin/python3
+
 provisioner:
   name: ansible
   playbooks:
+    prepare: prepare.yml
     converge: ../../collector.yml
+
 verifier:
   name: ansible
