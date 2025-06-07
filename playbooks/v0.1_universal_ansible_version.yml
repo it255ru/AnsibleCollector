@@ -1,0 +1,123 @@
+---
+- name: Universal Environment Validation
+  hosts: all
+  gather_facts: false
+  vars:
+    python_min_version: "3.8"
+    ansible_min_version: "2.12.0"
+
+  tasks:
+    # 1. НАДЕЖНЫЙ ПОИСК PYTHON
+    - name: Find Python interpreter reliably
+      ansible.builtin.shell: |
+        command -v python3 ||
+        which python3 ||
+        type -P python3 ||
+        for path in /usr/bin/python3 /usr/local/bin/python3 /opt/homebrew/bin/python3; do
+          [ -x "$path" ] && echo "$path" && break
+        done || echo "python3"
+      args:
+        executable: /bin/sh
+      register: python_search
+      changed_when: false
+      ignore_errors: true
+
+    - name: Extract clean Python path
+      ansible.builtin.set_fact:
+        python_actual_path: "{{ (python_search.stdout_lines | first | default('python3')).strip() }}"
+
+    # 2. ПРОВЕРКА PYTHON
+    - name: Test Python executable
+      ansible.builtin.command: "{{ python_actual_path }} --version"
+      register: python_test
+      changed_when: false
+      ignore_errors: true
+
+    - name: Get Python version safely
+      block:
+        - name: Get Python version
+          ansible.builtin.command: "{{ python_actual_path }} -c 'import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")'"
+          register: python_version
+          changed_when: false
+
+        - name: Validate Python version
+          ansible.builtin.assert:
+            that:
+              - python_version.stdout is version(python_min_version, '>=')
+            msg: "Python {{ python_min_version }}+ required (found {{ python_version.stdout }})"
+      rescue:
+        - name: Python check failed
+          ansible.builtin.fail:
+            msg: |
+              Failed to verify Python!
+              Path: {{ python_actual_path }}
+              Test output: {{ python_test.stdout | default('') }} {{ python_test.stderr | default('') }}
+              Error: {{ ansible_failed_result.msg if ansible_failed_result is defined else 'Unknown error' }}
+
+    # 3. НАДЕЖНАЯ ПРОВЕРКА ANSIBLE
+    - name: Check Ansible installation
+      block:
+        # Метод 1: Через импорт модуля Python (самый надежный)
+        - name: Get Ansible version via Python import
+          ansible.builtin.command: "{{ python_actual_path }} -c 'from ansible.release import __version__; print(__version__)'"
+          register: ansible_version_import
+          changed_when: false
+          ignore_errors: true
+
+        # Метод 2: Через CLI (если ansible в PATH)
+        - name: Get Ansible version via CLI
+          ansible.builtin.command: "ansible --version"
+          register: ansible_version_cli
+          changed_when: false
+          ignore_errors: true
+
+        # Определяем рабочую версию
+        - name: Set final Ansible version
+          ansible.builtin.set_fact:
+            ansible_version_string: >-
+              {% if ansible_version_import.stdout is defined and ansible_version_import.stdout | length > 0 %}
+                {{ ansible_version_import.stdout.strip() }}
+              {% elif ansible_version_cli.stdout is defined and ansible_version_cli.stdout | length > 0 %}
+                {{ (ansible_version_cli.stdout_lines | first | regex_search('\\d+\\.\\d+\\.\\d+')) }}
+              {% else %}
+                UNDETECTED
+              {% endif %}
+
+        - name: Verify Ansible version exists
+          ansible.builtin.assert:
+            that:
+              - ansible_version_string != 'UNDETECTED'
+            msg: "Could not determine Ansible version using any method"
+
+        - name: Prepare version comparison
+          ansible.builtin.set_fact:
+            current_version: "{{ ansible_version_string.split('.') | map('int') | list }}"
+            min_version: "{{ ansible_min_version.split('.') | map('int') | list }}"
+
+        - name: Validate Ansible version
+          ansible.builtin.assert:
+            that:
+              - (current_version[0] > min_version[0]) or
+                (current_version[0] == min_version[0] and current_version[1] > min_version[1]) or
+                (current_version[0] == min_version[0] and current_version[1] == min_version[1] and current_version[2] >= min_version[2])
+            msg: "Ansible {{ ansible_min_version }}+ required (found {{ ansible_version_string }})"
+
+      rescue:
+        - name: Ansible check failed
+          ansible.builtin.fail:
+            msg: |
+              Failed to verify Ansible!
+              Python path: {{ python_actual_path }}
+              Diagnostic info:
+              - Import method: {{ ansible_version_import.stdout | default('failed') }}
+              - CLI method: {{ ansible_version_cli.stdout | default('failed') }}
+              - Detected version: {{ ansible_version | default('none') }}
+              Error: {{ ansible_failed_result.msg if ansible_failed_result is defined else 'Unknown error' }}
+
+    # 4. ФИНАЛЬНЫЙ ОТЧЕТ
+    - name: Show success message
+      ansible.builtin.debug:
+        msg: |
+          Environment validation passed:
+          - Python: {{ python_version.stdout }} ({{ python_actual_path }})
+          - Ansible: {{ ansible_version_string }}
