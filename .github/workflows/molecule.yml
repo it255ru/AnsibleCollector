@@ -17,33 +17,29 @@ jobs:
       with:
         python-version: "3.8"
 
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          apt-transport-https \
-          ca-certificates \
-          curl \
-          gnupg \
-          lsb-release \
-          software-properties-common
-
     - name: Install Docker
       run: |
-        curl -fsSL https://get.docker.com | sudo sh
+        sudo apt-get update
+        sudo apt-get install -y docker.io
         sudo usermod -aG docker $USER
-        echo "Docker version:"
-        docker --version
+        newgrp docker
 
     - name: Install Molecule and dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install "molecule==3.6.0" "molecule-docker==1.1.0" ansible
+        pip install molecule molecule-docker ansible
 
     - name: Verify Docker
       run: |
-        sudo systemctl start docker
-        docker run --rm hello-world
+        docker --version
+        docker run hello-world
+
+    - name: Check Molecule file structure
+      run: |
+        echo "Current directory structure:"
+        ls -lR
+        echo "Molecule file content:"
+        cat molecule/default/molecule.yml || true
 
     - name: Run molecule test
       run: |
