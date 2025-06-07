@@ -26,6 +26,7 @@ provisioner:
   name: ansible
   playbooks:
     converge: ../../collector.yml
+    prepare: ""
   config_options:
     defaults:
       become: true
