@@ -10,18 +10,25 @@ platforms:
     image: debian:bullseye
     privileged: true
     pre_build_image: true
+    command: /lib/systemd/systemd
     ansible_python_interpreter: /usr/bin/python3
   - name: rocky
     image: rockylinux/rockylinux:8
     privileged: true
     pre_build_image: true
+    command: /lib/systemd/systemd
     ansible_python_interpreter: /usr/bin/python3
 
 provisioner:
   name: ansible
   playbooks:
-    prepare: prepare.yml
     converge: ../../collector.yml
+  config_options:
+    defaults:
+      become: false
+      interpreter_python: auto_silent
+    ssh_connection:
+      pipelining: true
 
 verifier:
   name: ansible
