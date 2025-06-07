@@ -1,17 +1,11 @@
 ---
-- name: Prepare instances
+- name: Prepare Debian container
   hosts: all
   become: yes
+  gather_facts: yes
   tasks:
-    - name: Install Python 3 on Debian-based systems
+    - name: Install Python 3
       apt:
         name: python3
         state: present
         update_cache: yes
-      when: ansible_os_family == "Debian"
-
-    - name: Install Python 3 on RHEL-based systems
-      yum:
-        name: python3
-        state: present
-      when: ansible_os_family == "RedHat"
