@@ -19,6 +19,7 @@ platforms:
     environment:
       container: docker
     stop_timeout: 20
+    user: root
     ansible_python_interpreter: /usr/bin/python3
 
 provisioner:
@@ -27,7 +28,8 @@ provisioner:
     converge: ../../collector.yml
   config_options:
     defaults:
-      become: false
+      become: true
+      remote_tmp: /tmp/.ansible/tmp
       interpreter_python: auto_silent
     ssh_connection:
       pipelining: true
