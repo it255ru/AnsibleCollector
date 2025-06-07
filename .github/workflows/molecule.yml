@@ -70,4 +70,4 @@ jobs:
 
     - name: Run molecule test
       run: |
-        molecule test --debug
+        molecule test
