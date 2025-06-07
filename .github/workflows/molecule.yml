@@ -17,36 +17,57 @@ jobs:
       with:
         python-version: 3.8
 
-    - name: Remove conflicting containerd packages
+    - name: Clean up existing Docker installations
       run: |
-        sudo systemctl stop containerd || true
-        sudo dpkg --remove --force-remove-reinstreq containerd || true
-        sudo apt-get remove -y containerd containerd.io || true
+        sudo systemctl stop docker containerd || true
+        sudo apt-get remove -y docker docker-engine docker.io containerd containerd.io || true
         sudo apt-get autoremove -y
-    
+        sudo rm -rf /var/lib/docker /etc/docker
+        sudo rm -f /etc/apt/keyrings/docker.gpg
+        sudo rm -f /etc/apt/sources.list.d/docker.list
+
+    - name: Install Docker dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          apt-transport-https \
+          ca-certificates \
+          curl \
+          gnupg \
+          lsb-release
+
+    - name: Add Docker official GPG key
+      run: |
+        sudo mkdir -p /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
     - name: Setup Docker repository
       run: |
-        sudo apt-get update
-        sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    
-    - name: Install Docker packages
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+        echo \
+          "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+          $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-    - name: Install dependencies
+    - name: Install Docker Engine
       run: |
         sudo apt-get update
-        sudo apt-get install -y docker.io
+        sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    - name: Add current user to docker group
+      run: |
+        sudo usermod -aG docker $USER
+        newgrp docker
+
+    - name: Verify Docker installation
+      run: |
+        sudo systemctl start docker
+        docker --version
+        docker run hello-world
+
+    - name: Install Molecule and dependencies
+      run: |
         python -m pip install --upgrade pip
-        pip install molecule ansible
+        pip install molecule ansible docker
 
-    - name: Check Docker info
+    - name: Run molecule test
       run: |
-        sudo docker info
-
-    - name: Run molecule test with debug
-      run: |
-        sudo molecule test --debug
+        molecule test --debug
