@@ -7,10 +7,16 @@ driver:
   
 platforms:
   - name: debian
+    image: custom_debian_systemd  # можно любое название
     build_image: true
     dockerfile: Dockerfile
     privileged: true
-    command: /sbin/init
+    command: /lib/systemd/systemd
+    capabilities:
+      - SYS_ADMIN
+      - NET_ADMIN
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
     ansible_python_interpreter: /usr/bin/python3
     
 provisioner:
