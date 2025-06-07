@@ -12,6 +12,7 @@ RUN apt-get update && \
 # Необходимый сигнал для корректной остановки systemd
 STOPSIGNAL SIGRTMIN+3
 
+VOLUME [ "/sys/fs/cgroup" ]
+
 # Указываем systemd как основной процесс
 CMD ["/lib/systemd/systemd"]
-
