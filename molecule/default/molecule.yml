@@ -4,21 +4,23 @@ dependency:
 
 driver:
   name: docker
-  
+
 platforms:
   - name: debian
-    image: custom_debian_systemd  # можно любое название
-    build_image: true
-    dockerfile: Dockerfile
+    image: custom_debian_systemd
+    pre_build_image: false
     privileged: true
-    command: /lib/systemd/systemd
     capabilities:
       - SYS_ADMIN
       - NET_ADMIN
+    command: /lib/systemd/systemd
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    environment:
+      container: docker
+    stop_timeout: 20
     ansible_python_interpreter: /usr/bin/python3
-    
+
 provisioner:
   name: ansible
   playbooks:
