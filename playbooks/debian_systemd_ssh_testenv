@@ -1,0 +1,24 @@
+---
+- name: Проверка настроек ssh и systemd в контейнере
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Проверка статуса ssh.service
+      ansible.builtin.systemd:
+        name: ssh
+        state: started
+      register: ssh_status
+
+    - name: Показать статус SSH
+      ansible.builtin.debug:
+        msg: "SSH service: {{ 'работает' if ssh_status.status == 'started' else 'не работает' }}"
+
+    - name: Проверка состояния systemd
+      ansible.builtin.command: systemctl is-system-running
+      register: systemd_status
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Показать статус systemd
+      ansible.builtin.debug:
+        msg: "Systemd state: {{ systemd_status.stdout }}"
