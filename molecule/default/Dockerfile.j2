@@ -1,18 +1,29 @@
 FROM debian:bullseye
 
-ENV container docker
+ENV container=docker
 
-# Установка systemd и необходимых утилит
+# Устанавливаем systemd, SSH и нужные пакеты
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    systemd systemd-sysv dbus sudo iproute2 python3 python3-pip && \
+        systemd systemd-sysv openssh-server sudo iproute2 python3 python3-apt dbus && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Необходимый сигнал для корректной остановки systemd
+# Подготовка для systemd
+RUN rm -f /etc/machine-id && \
+    touch /etc/machine-id && \
+    systemd-machine-id-setup
+
+# Настройка SSH
+RUN mkdir -p /var/run/sshd && \
+    echo 'root:root' | chpasswd && \
+    sed -i 's/^#\?\s*PermitRootLogin .*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    echo 'UsePAM yes' >> /etc/ssh/sshd_config && \
+    sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd
+
+# Завершение и порты
 STOPSIGNAL SIGRTMIN+3
+EXPOSE 22
+VOLUME ["/sys/fs/cgroup"]
 
-VOLUME [ "/sys/fs/cgroup" ]
-
-# Указываем systemd как основной процесс
 CMD ["/lib/systemd/systemd"]
