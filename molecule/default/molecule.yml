@@ -8,6 +8,8 @@ driver:
 platforms:
   - name: debian
     image: custom_debian_systemd
+    build_image: true
+    dockerfile: Dockerfile.j2
     pre_build_image: false
     privileged: true
     capabilities:
@@ -25,8 +27,8 @@ platforms:
 provisioner:
   name: ansible
   playbooks:
-    converge: ../../collector.yml
     prepare: ""
+    converge: ../../collector.yml
   config_options:
     defaults:
       become: true
